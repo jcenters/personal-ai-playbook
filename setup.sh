@@ -301,6 +301,7 @@ MODULE_SYSTEM_HEALTH=false
 MODULE_RESEARCH=false
 MODULE_LCM_MEMORY=false
 MODULE_DAILY_BRIEFING=false
+MODULE_VOICE_INPUT=false
 
 ask_yn "Google Workspace (calendar & email via gws CLI)?" "n" \
   && MODULE_GOOGLE_WORKSPACE=true && ok "  Google Workspace: enabled"   || info "  Google Workspace: skipped"
@@ -325,6 +326,9 @@ ask_yn "LCM memory system (session logging + nightly compaction)?" "y" \
 
 ask_yn "Scheduled daily briefings (morning/evening routines)?" "n" \
   && MODULE_DAILY_BRIEFING=true && ok "  Daily briefings: enabled"      || info "  Daily briefings: skipped"
+
+ask_yn "Voice input via faster-whisper (local STT, no API key)?" "n" \
+  && MODULE_VOICE_INPUT=true && ok "  Voice input: enabled"             || info "  Voice input: skipped"
 
 # ─── Credential Collection ────────────────────────────────────────────────────
 
@@ -631,6 +635,7 @@ run_module_install() {
 [[ "$MODULE_RESEARCH" == true ]]         && run_module_install "agents/research"
 [[ "$MODULE_LCM_MEMORY" == true ]]       && run_module_install "memory/lcm"
 [[ "$MODULE_DAILY_BRIEFING" == true ]]   && run_module_install "routines/daily-briefing"
+[[ "$MODULE_VOICE_INPUT" == true ]]        && run_module_install "voice-input/faster-whisper"
 
 # ─── Config Repo: Git Init ────────────────────────────────────────────────────
 
