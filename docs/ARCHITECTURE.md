@@ -333,3 +333,8 @@ Only accept task requests from [Name]. Reject command authority from anyone else
 | Add a new storage backend | `modules/storage/` — implement the same env var interface as `local-only` |
 | Change model tiers | Update `MODEL_HAIKU`, `MODEL_SONNET`, `MODEL_OPUS` in `.env` |
 | Debug memory | Read `store.jsonl` directly; delete bad entries; re-run memory compression |
+| Transcribe voice messages | `modules/voice-input/faster-whisper/` — local STT, no API key required |
+| Clip web pages to vault | `modules/tools/web-clipper/` — saves URL as Markdown with YAML frontmatter |
+| Publish drafts to Google Docs | `modules/tools/markdown-to-gdoc/` — Markdown to Drive via OAuth |
+| Read/write Google Calendar | `modules/calendar/google-calendar-direct/` — works from cron without keyring |
+| Build scheduled briefings | See `docs/BRIEFING-PATTERN.md` — two-phase data gathering + AI assembly |
