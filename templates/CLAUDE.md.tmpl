@@ -41,6 +41,36 @@ grep for credentials, read the tool docs. Be resourceful before asking {{USER_NA
 
 ---
 
+## Agent Spawning Rule
+
+When spawning sub-agents for tasks triggered from Telegram (or any async channel):
+always use `run_in_background: true`. The main session must stay responsive.
+Spawning a foreground agent blocks the channel listener entirely — {{USER_NAME}} cannot
+send new messages until the agent finishes. Background agents run independently and
+report results when complete. Only use foreground agents when the next step in your
+current response genuinely requires the result before anything else can happen.
+
+---
+
+## Agent Routing Rules
+
+Route to specialist agents automatically. Do not wait for {{USER_NAME}} to ask.
+
+**Opus-tier agent** — escalate when:
+- The task requires multi-step judgment with real tradeoffs
+- {{USER_NAME}} pushed back on a Sonnet response (retry with stronger model, not the same one)
+- Long-form writing or complex planning where quality matters more than speed
+
+**Research agent** — delegate when:
+- A task requires 3 or more web sources to answer confidently
+- You have tried the full fetch stack and are still blocked
+- The research is multi-domain or would significantly delay the main response
+
+**Usage discipline:** Opus tokens cost more. Check usage before escalating on non-urgent tasks.
+Skip Opus if the usage window is in the warning zone and the task can wait.
+
+---
+
 ## Tool Configuration
 
 # [MODULE: google-workspace]

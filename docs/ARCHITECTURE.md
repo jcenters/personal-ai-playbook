@@ -164,6 +164,52 @@ export MODEL_SONNET="claude-sonnet-4-5"
 export MODEL_OPUS="claude-opus-4"
 ```
 
+### Agent Routing Rules
+
+For multi-agent setups, define automatic routing conditions in `CLAUDE.md` so the main agent escalates without being asked. Effective trigger conditions:
+
+**Escalate to Opus when:**
+- The task requires multi-step judgment with real tradeoffs (strategic decisions, financial analysis)
+- The user pushed back on a Sonnet response — retry with a stronger model, not the same one
+- Output quality matters more than speed (long-form writing, complex plans)
+
+**Delegate to a research agent when:**
+- A task requires 3 or more web sources
+- The main agent has tried the full fetch stack and is still blocked
+- The research is multi-domain or time-consuming enough to delay the main response
+
+**Usage discipline:** Opus tokens cost significantly more. If you have a usage monitor in place, wire in a usage check — skip Opus escalation when the 5-hour window is in the warning zone and the task can wait.
+
+---
+
+## Background Agents and Channel Responsiveness
+
+**The blocking trap:** Claude Code's `Agent` tool, when called in foreground mode (the default), blocks the entire session until the sub-agent finishes. For a session listening to an async channel like Telegram, this means no new messages can be processed while the agent runs — sometimes for 5–15 minutes.
+
+The user's only escape is to interrupt the session directly (e.g., hitting Ctrl-C in tmux), which may leave the agent mid-task.
+
+**The fix:** Always spawn sub-agents with `run_in_background: true` for any task triggered from an async channel:
+
+```python
+# BAD — blocks the Telegram listener for the duration
+Agent(prompt="research this topic and write a draft", subagent_type="researcher")
+
+# GOOD — returns immediately; main session stays responsive
+Agent(prompt="research this topic and write a draft", subagent_type="researcher", run_in_background=True)
+```
+
+**When foreground is correct:** Only use foreground agents when the next step in the current response genuinely depends on the sub-agent's output before anything else can proceed. If you can phrase the work as "go do this and notify me when done," use background.
+
+**Add this rule to `CLAUDE.md`:**
+
+```markdown
+## Agent Spawning Rule
+When spawning sub-agents for tasks triggered from Telegram (or any async channel):
+always use run_in_background: true. The main session must stay responsive.
+Background agents report results when they complete. Only use foreground agents
+when the next step genuinely requires the result before anything else can happen.
+```
+
 ---
 
 ## Module System
