@@ -302,6 +302,8 @@ MODULE_RESEARCH=false
 MODULE_LCM_MEMORY=false
 MODULE_DAILY_BRIEFING=false
 MODULE_VOICE_INPUT=false
+MODULE_TTS=false
+TTS_BACKEND="edge-tts"
 
 ask_yn "Google Workspace (calendar & email via gws CLI)?" "n" \
   && MODULE_GOOGLE_WORKSPACE=true && ok "  Google Workspace: enabled"   || info "  Google Workspace: skipped"
@@ -329,6 +331,18 @@ ask_yn "Scheduled daily briefings (morning/evening routines)?" "n" \
 
 ask_yn "Voice input via faster-whisper (local STT, no API key)?" "n" \
   && MODULE_VOICE_INPUT=true && ok "  Voice input: enabled"             || info "  Voice input: skipped"
+
+ask_yn "Text-to-speech output (read responses aloud)?" "n" \
+  && MODULE_TTS=true && ok "  TTS: enabled" || info "  TTS: skipped"
+
+if [[ "$MODULE_TTS" == true ]]; then
+  echo ""
+  info "  TTS backend options:"
+  info "    edge-tts   — free, no API key, Microsoft neural voices (recommended to start)"
+  info "    elevenlabs — premium, voice cloning, most natural"
+  info "    minimax    — custom character voices, strong multilingual"
+  ask TTS_BACKEND "  Backend" "edge-tts"
+fi
 
 # ─── Credential Collection ────────────────────────────────────────────────────
 
@@ -636,6 +650,7 @@ run_module_install() {
 [[ "$MODULE_LCM_MEMORY" == true ]]       && run_module_install "memory/lcm"
 [[ "$MODULE_DAILY_BRIEFING" == true ]]   && run_module_install "routines/daily-briefing"
 [[ "$MODULE_VOICE_INPUT" == true ]]        && run_module_install "voice-input/faster-whisper"
+[[ "$MODULE_TTS" == true ]]             && run_module_install "tts/${TTS_BACKEND}"
 
 # ─── Config Repo: Git Init ────────────────────────────────────────────────────
 
