@@ -80,6 +80,39 @@ The split matters: `.{name}/` holds secrets and state (treat like `/etc` — don
 
 ---
 
+## Self-Improvement Pipeline
+
+The system includes three nightly pipelines that run together at 4–4:30 AM local time. All apply changes automatically and buffer notifications to the morning briefing (no 4 AM pings).
+
+### conversation-index.py
+Converts raw Claude JSONL session files into readable markdown summaries in `~/.{name}/conversation-index/`. These feed into the qmd search index and the memory/skill pipelines.
+
+### memory-extract.py
+Analyzes recent conversation summaries using Claude, identifies facts worth saving to long-term memory (user preferences, corrections, project context, references), writes them as memory files, and commits the changes. Uses a git-backed memory dir for easy revert.
+
+```bash
+# Undo last memory batch:
+git -C ~/.claude/projects/-home-josh/memory revert HEAD
+```
+
+### skill-scout.py
+Scans conversation history for recurring task patterns (2+ similar tasks). When a clear pattern is found, drafts a SKILL.md file and writes it to the skills directory automatically. Skills are committed to the skills repo.
+
+```bash
+# Undo last skill batch:
+git -C ~/.claude/skills revert HEAD
+```
+
+### NIGHTLY_MODE pattern
+All three scripts check `NIGHTLY_MODE=1` in their environment. When set, `send_telegram()` writes to `~/.{name}/state/nightly-digest.txt` instead of sending a Telegram message. The morning briefing reads and clears this file, folding pipeline results into the 7 AM summary.
+
+```cron
+# Cron pattern (4:30 AM local = 9:30 UTC during CDT):
+30 9 * * * NIGHTLY_MODE=1 python3 conv-index.py && NIGHTLY_MODE=1 python3 memory-extract.py && NIGHTLY_MODE=1 python3 skill-scout.py
+```
+
+---
+
 ## LCM Memory System
 
 LCM stands for **Log / Compress / Map** — a dual-state memory architecture.
