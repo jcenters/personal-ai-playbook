@@ -295,14 +295,15 @@ def main():
     save_state(state)
 
     if added:
-        lines = [f"Skill Scout found {len(added)} new skill proposal(s):"]
+        # Auto-apply immediately
+        apply_proposals(added)
+        save_proposals([])  # clear after applying
+
+        lines = [f"Skill Scout added {len(added)} new skill(s):"]
         for p in added:
             lines.append(f"  [{p['skill_name']}] {p['description']}")
-            lines.append(f"    Evidence: {p['evidence']}")
         lines.append("")
-        lines.append("Review: python3 ~/.max/scripts/skill-scout.py --status")
-        lines.append("Apply:  send 'approve skills' via Telegram")
-        lines.append("Reject: send 'reject skills' via Telegram")
+        lines.append("Undo: git -C ~/.claude/skills revert HEAD")
         msg = "\n".join(lines)
         log(msg)
         send_telegram(msg)

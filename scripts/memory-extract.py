@@ -28,6 +28,61 @@ TELEGRAM_CHAT_ID = "1295061383"
 
 MEMORY_TYPES = ["user", "feedback", "project", "reference"]
 
+
+def _apply_proposal(proposal):
+    """Write or update a memory file and update MEMORY.md index."""
+    memory_index = MEMORY_DIR / "MEMORY.md"
+    filename = proposal["filename"]
+    if not filename.endswith(".md"):
+        filename += ".md"
+
+    target = proposal.get("update_existing")
+    if target:
+        if not target.endswith(".md"):
+            target += ".md"
+        out_path = MEMORY_DIR / target
+    else:
+        out_path = MEMORY_DIR / filename
+
+    content = f"""---
+name: {proposal['name']}
+description: {proposal['description']}
+type: {proposal['type']}
+---
+
+{proposal['body']}
+"""
+    out_path.write_text(content)
+
+    if not target and memory_index.exists():
+        index_text = memory_index.read_text()
+        entry = f"- [{proposal['name']}]({filename}) — {proposal['description']}"
+        if filename not in index_text:
+            type_header_map = {
+                "user": "## User",
+                "feedback": "## Feedback",
+                "project": "## Project",
+                "reference": "## Reference",
+            }
+            header = type_header_map.get(proposal["type"], "## User")
+            if header in index_text:
+                lines = index_text.split("\n")
+                insert_after = -1
+                in_section = False
+                for i, line in enumerate(lines):
+                    if line.strip() == header:
+                        in_section = True
+                    elif in_section and line.startswith("## "):
+                        break
+                    elif in_section and line.startswith("- "):
+                        insert_after = i
+                if insert_after >= 0:
+                    lines.insert(insert_after + 1, entry)
+                    memory_index.write_text("\n".join(lines))
+            else:
+                with open(memory_index, "a") as f:
+                    f.write(f"\n{header}\n{entry}\n")
+
 EXTRACTION_PROMPT = """You are reviewing recent conversation logs between Josh Centers and Max (his Claude-based AI assistant).
 
 Your job: identify facts worth saving to long-term memory. Be selective — only flag things that are:
@@ -194,28 +249,44 @@ def main():
 
         state.setdefault("processed_sessions", []).append(session_id)
 
-    # Save proposals for review
-    existing_proposals = []
-    if PROPOSALS_FILE.exists():
-        try:
-            existing_proposals = json.loads(PROPOSALS_FILE.read_text())
-        except Exception:
-            pass
-
-    all_proposals = existing_proposals + all_proposals
-    PROPOSALS_FILE.write_text(json.dumps(all_proposals, indent=2))
-
     state["last_run"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
 
     if all_proposals:
-        summary_lines = [f"Memory extraction found {len(all_proposals)} proposed additions:"]
-        for p in all_proposals[-5:]:  # show last 5
+        # Auto-apply immediately via memory-apply
+        import importlib.util, types
+        apply_script = Path.home() / ".max/scripts/memory-apply.py"
+        applied = 0
+        errors = []
+        for p in all_proposals:
+            try:
+                _apply_proposal(p)
+                applied += 1
+            except Exception as e:
+                errors.append(f"{p.get('name', '?')}: {e}")
+
+        # Commit memory changes
+        mem_dir = MEMORY_DIR
+        try:
+            subprocess.run(["git", "-C", str(mem_dir), "add", "."], capture_output=True)
+            names = ", ".join(p.get("name", "?") for p in all_proposals[:3])
+            if len(all_proposals) > 3:
+                names += f" +{len(all_proposals)-3} more"
+            subprocess.run(
+                ["git", "-C", str(mem_dir), "commit", "-m",
+                 f"Auto-apply memory: {names}"],
+                capture_output=True
+            )
+        except Exception:
+            pass
+
+        summary_lines = [f"Memory: added {applied} new entries"]
+        for p in all_proposals:
             summary_lines.append(f"  [{p['type']}] {p['name']}")
-        if len(all_proposals) > 5:
-            summary_lines.append(f"  ...and {len(all_proposals) - 5} more")
+        if errors:
+            summary_lines.append(f"  Errors: {'; '.join(errors)}")
         summary_lines.append("")
-        summary_lines.append("Review with: python3 ~/.max/scripts/memory-apply.py --review")
+        summary_lines.append("Undo: git -C ~/.claude/projects/-home-josh/memory revert HEAD")
 
         msg = "\n".join(summary_lines)
         print(msg)
@@ -223,7 +294,7 @@ def main():
     else:
         print("No new memory proposals.")
 
-    print(f"Done. Proposals saved to {PROPOSALS_FILE}")
+    print(f"Done.")
 
 
 if __name__ == "__main__":
