@@ -47,8 +47,18 @@ The result is a single assistant that:
 | `git` | Any recent version |
 | Node.js (v18+) or Bun | For channel bridge scripts and tooling |
 | `tmux` | Session management for the assistant process |
+| `python3` | Required by all memory pipeline scripts (3.9+) |
 
-Optional per-module requirements are listed in each module's `README.md`.
+**Optional — required by specific modules:**
+
+| Requirement | Needed for |
+|---|---|
+| `qmd` | memory/conversation-index, memory/nightly-pipeline — semantic search across conversation history. Install: `brew install qmd-app/tap/qmd` or see [qmd docs](https://github.com/qmd-app/qmd) |
+| `faster-whisper` | voice-input/faster-whisper — local voice transcription, no API key |
+| `op` (1Password CLI) | secrets/1password — credential management |
+| Telegram bot token | messaging/telegram — get one from @BotFather |
+
+Optional per-module requirements are also listed in each module's `README.md`.
 
 ---
 
