@@ -40,7 +40,7 @@ SCOUT_PROMPT = """You are analyzing conversation logs between Josh Centers and M
 
 Your job: identify recurring task patterns that would benefit from a formal skill file.
 
-A skill file is a markdown document that tells Max exactly how to perform a specific task — step-by-step instructions, format rules, output paths, API calls, etc. Skills are stored in ~/.claude/skills/{skill-name}/SKILL.md.
+A skill file is a markdown document that tells Max exactly how to perform a specific task — step-by-step instructions, format rules, output paths, API calls, etc. Skills are stored in ~/.claude/skills/{{skill-name}}/SKILL.md.
 
 EXISTING SKILLS (do NOT propose these — they already exist):
 {existing_skills}
@@ -83,10 +83,21 @@ def log(msg):
         f.write(line + "\n")
 
 
+DIGEST_FILE = Path.home() / ".max/state/nightly-digest.txt"
+
+
 def send_telegram(text):
+    # If NIGHTLY_MODE is set, write to digest file instead of sending immediately.
+    # Morning briefing picks this up and includes it in the 7 AM summary.
+    if os.environ.get("NIGHTLY_MODE"):
+        DIGEST_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(DIGEST_FILE, "a") as f:
+            f.write(f"\n[skill-scout] {text}\n")
+        log("(nightly mode: buffered to digest)")
+        return
+
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
-        # Try loading from .env
         env_file = Path.home() / ".env"
         if env_file.exists():
             for line in env_file.read_text().splitlines():
